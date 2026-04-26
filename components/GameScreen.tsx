@@ -1,25 +1,65 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { poems } from '@/data/poems';
 import { readings } from '@/data/readings';
 import { generateOptions } from '@/lib/gameUtils';
 import { RubyText } from '@/components/RubyText';
+import { useGameSounds } from '@/lib/useGameSounds';
 
-type Phase = 'stage-select' | 'playing' | 'poem-complete' | 'stage-clear' | 'game-clear';
+type Phase = 'stage-select' | 'order-select' | 'playing' | 'poem-complete' | 'stage-clear' | 'game-clear';
+type OrderMode = 'sequential' | 'reverse' | 'random';
+
+function shuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+function formatTime(ms: number): string {
+  const totalTenths = Math.floor(ms / 100);
+  const tenths = totalTenths % 10;
+  const totalSecs = Math.floor(totalTenths / 10);
+  const secs = totalSecs % 60;
+  const mins = Math.floor(totalSecs / 60);
+  if (mins > 0) {
+    return `${mins}分${String(secs).padStart(2, '0')}.${tenths}秒`;
+  }
+  return `${secs}.${tenths}秒`;
+}
 
 export default function GameScreen() {
   const [poemIdx, setPoemIdx] = useState(0);
-  const [step, setStep] = useState(0); // 0-4: selecting segments[0]-[4]
+  const [step, setStep] = useState(0);
   const [filled, setFilled] = useState<(string | null)[]>([null, null, null, null, null]);
   const [wrong, setWrong] = useState<string[]>([]);
   const [options, setOptions] = useState<string[]>([]);
   const [phase, setPhase] = useState<Phase>('stage-select');
   const [showNext, setShowNext] = useState(false);
+  const [selectedStage, setSelectedStage] = useState(1);
+  const [poemOrder, setPoemOrder] = useState<number[]>(() => Array.from({ length: 10 }, (_, i) => i));
+  const [positionInStage, setPositionInStage] = useState(0);
+
+  // Timer state (display only — actual timing uses refs)
+  const [displayMs, setDisplayMs] = useState(0);
+  const [finalStageMs, setFinalStageMs] = useState(0);
+  const [showPenalty, setShowPenalty] = useState(false);
+
+  // Timer refs
+  const poemStartRef = useRef<number>(0);
+  const penaltyRef = useRef<number>(0);
+  const stageBaseRef = useRef<number>(0);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const penaltyFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const poem = poems[poemIdx] ?? poems[99];
-  const stageNum = Math.floor(poemIdx / 10) + 1;
-  const poemInStage = (poemIdx % 10) + 1;
+  const stageNum = selectedStage;
+  const poemInStage = positionInStage + 1;
+
+  const { playCorrect, playWrong } = useGameSounds();
 
   const segmentToReading = useMemo(() => {
     const map = new Map<string, string>();
@@ -37,20 +77,71 @@ export default function GameScreen() {
     }
   }, [poemIdx, step, phase]);
 
-  const startPoem = useCallback((idx: number) => {
-    setPoemIdx(idx);
-    setStep(0);
-    setFilled([null, null, null, null, null]);
-    setWrong([]);
-    setPhase('playing');
-    setShowNext(false);
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+      if (penaltyFlashRef.current) clearTimeout(penaltyFlashRef.current);
+    };
   }, []);
 
-  const handleSelectStage = useCallback(
-    (selectedStage: number) => {
-      startPoem((selectedStage - 1) * 10);
+  const stopTimer = useCallback((): number => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    stageBaseRef.current += penaltyRef.current + (Date.now() - poemStartRef.current);
+    setDisplayMs(stageBaseRef.current);
+    return stageBaseRef.current;
+  }, []);
+
+  const startTimerForPoem = useCallback((isNewStage: boolean) => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (isNewStage) {
+      stageBaseRef.current = 0;
+      setFinalStageMs(0);
+      setDisplayMs(0);
+    }
+    poemStartRef.current = Date.now();
+    penaltyRef.current = 0;
+    intervalRef.current = setInterval(() => {
+      setDisplayMs(
+        stageBaseRef.current + penaltyRef.current + (Date.now() - poemStartRef.current),
+      );
+    }, 100);
+  }, []);
+
+  const startPoem = useCallback(
+    (idx: number, pos: number, isNewStage: boolean) => {
+      setPoemIdx(idx);
+      setPositionInStage(pos);
+      setStep(0);
+      setFilled([null, null, null, null, null]);
+      setWrong([]);
+      setPhase('playing');
+      setShowNext(false);
+      startTimerForPoem(isNewStage);
     },
-    [startPoem],
+    [startTimerForPoem],
+  );
+
+  const handleSelectStage = useCallback((stage: number) => {
+    setSelectedStage(stage);
+    setPhase('order-select');
+  }, []);
+
+  const handleSelectOrder = useCallback(
+    (mode: OrderMode) => {
+      const base = (selectedStage - 1) * 10;
+      const indices = Array.from({ length: 10 }, (_, i) => base + i);
+      const order =
+        mode === 'sequential' ? indices
+        : mode === 'reverse' ? [...indices].reverse()
+        : shuffle(indices);
+      setPoemOrder(order);
+      startPoem(order[0], 0, true);
+    },
+    [selectedStage, startPoem],
   );
 
   const handleChoice = useCallback(
@@ -59,40 +150,59 @@ export default function GameScreen() {
       const correct = poem.segments[step];
 
       if (choice === correct) {
+        playCorrect();
         const newFilled = [...filled];
         newFilled[step] = choice;
         setFilled(newFilled);
         setWrong([]);
 
         if (step === 4) {
+          const total = stopTimer();
+          setFinalStageMs(total);
           setPhase('poem-complete');
           setTimeout(() => setShowNext(true), 2200);
         } else {
           setStep((s) => s + 1);
         }
       } else {
+        // Wrong: add 1-second penalty
+        playWrong();
+        penaltyRef.current += 1000;
         setWrong((prev) => (prev.includes(choice) ? prev : [...prev, choice]));
+        if (penaltyFlashRef.current) clearTimeout(penaltyFlashRef.current);
+        setShowPenalty(true);
+        penaltyFlashRef.current = setTimeout(() => setShowPenalty(false), 800);
       }
     },
-    [phase, poem, step, filled],
+    [phase, poem, step, filled, stopTimer],
   );
 
   const handleNextPoem = useCallback(() => {
-    const next = poemIdx + 1;
-    if (next >= 100) {
-      setPhase('game-clear');
+    const nextPos = positionInStage + 1;
+    if (nextPos >= poemOrder.length) {
+      if (selectedStage >= 10) {
+        setPhase('game-clear');
+      } else {
+        setPhase('stage-clear');
+      }
       return;
     }
-    if (poemIdx % 10 === 9) {
-      setPhase('stage-clear');
-      return;
-    }
-    startPoem(next);
-  }, [poemIdx, startPoem]);
+    startPoem(poemOrder[nextPos], nextPos, false);
+  }, [positionInStage, poemOrder, selectedStage, startPoem]);
 
   const handleNextStage = useCallback(() => {
-    startPoem(poemIdx + 1);
-  }, [poemIdx, startPoem]);
+    const nextStage = selectedStage + 1;
+    setSelectedStage(nextStage);
+    setPhase('order-select');
+  }, [selectedStage]);
+
+  const handleBackToSelect = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+      intervalRef.current = null;
+    }
+    setPhase('stage-select');
+  }, []);
 
   const isComplete = phase !== 'playing';
 
@@ -126,22 +236,60 @@ export default function GameScreen() {
         </div>
       )}
 
+      {/* ===== ORDER SELECT ===== */}
+      {phase === 'order-select' && (
+        <div className="w-full max-w-md flex flex-col items-center gap-6 mt-8">
+          <div className="text-center">
+            <div className="text-amber-400 text-3xl font-serif tracking-widest mb-1">第 {selectedStage} 章</div>
+            <div className="text-stone-400 text-sm">出題順を選んでください</div>
+          </div>
+          <div className="w-full flex flex-col gap-3">
+            {(
+              [
+                { mode: 'sequential' as OrderMode, label: '順順', sub: '第1首 → 第10首', icon: '→' },
+                { mode: 'reverse' as OrderMode, label: '逆順', sub: '第10首 → 第1首', icon: '←' },
+                { mode: 'random' as OrderMode, label: 'ランダム', sub: 'シャッフル', icon: '✦' },
+              ] as const
+            ).map(({ mode, label, sub, icon }) => (
+              <button
+                key={mode}
+                onClick={() => handleSelectOrder(mode)}
+                className="rounded-xl border-2 border-stone-600 bg-stone-800 hover:bg-stone-700 hover:border-amber-500 px-6 py-5 flex items-center gap-4 transition-all duration-200 active:scale-95"
+              >
+                <span className="text-amber-400 text-2xl w-8 text-center">{icon}</span>
+                <div className="text-left">
+                  <div className="text-amber-200 font-serif text-lg">{label}</div>
+                  <div className="text-stone-500 text-xs">{sub}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+          <button
+            onClick={handleBackToSelect}
+            className="text-stone-500 hover:text-amber-300 text-sm transition-colors"
+          >
+            ← ステージ選択に戻る
+          </button>
+        </div>
+      )}
+
       {/* ===== STAGE CLEAR ===== */}
       {phase === 'stage-clear' && (
-        <div className="flex flex-col items-center justify-center flex-1 gap-8 animate-float-up mt-24">
-          <div className="text-amber-400 text-5xl font-serif tracking-widest">
-            第{stageNum}章
-          </div>
+        <div className="flex flex-col items-center justify-center flex-1 gap-6 animate-float-up mt-16">
+          <div className="text-amber-400 text-5xl font-serif tracking-widest">第{stageNum}章</div>
           <div className="text-white text-3xl">クリア！</div>
-          <div className="text-stone-400 text-sm">{poemIdx + 1}首目まで完了</div>
+          <div className="bg-stone-800 border border-amber-700 rounded-xl px-10 py-6 text-center">
+            <div className="text-stone-400 text-xs mb-2 tracking-widest">タイム</div>
+            <div className="text-amber-300 text-4xl font-mono">{formatTime(finalStageMs)}</div>
+          </div>
           <button
             onClick={handleNextStage}
-            className="mt-4 px-8 py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white rounded-lg text-lg font-semibold transition-colors"
+            className="mt-2 px-8 py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white rounded-lg text-lg font-semibold transition-colors"
           >
             次の章へ →
           </button>
           <button
-            onClick={() => setPhase('stage-select')}
+            onClick={handleBackToSelect}
             className="px-8 py-2 text-stone-400 hover:text-amber-300 text-sm transition-colors"
           >
             ステージ選択に戻る
@@ -151,16 +299,20 @@ export default function GameScreen() {
 
       {/* ===== GAME CLEAR ===== */}
       {phase === 'game-clear' && (
-        <div className="flex flex-col items-center justify-center flex-1 gap-6 animate-float-up mt-24">
+        <div className="flex flex-col items-center justify-center flex-1 gap-6 animate-float-up mt-16">
           <div className="text-amber-400 text-5xl font-serif tracking-widest">百人一首</div>
           <div className="text-white text-3xl">完全制覇！</div>
+          <div className="bg-stone-800 border border-amber-700 rounded-xl px-10 py-6 text-center">
+            <div className="text-stone-400 text-xs mb-2 tracking-widest">最終ステージ タイム</div>
+            <div className="text-amber-300 text-4xl font-mono">{formatTime(finalStageMs)}</div>
+          </div>
           <div className="text-stone-300 text-base text-center leading-relaxed max-w-xs">
             百首すべての和歌を完成させました。
             <br />おめでとうございます！
           </div>
           <button
-            onClick={() => setPhase('stage-select')}
-            className="mt-4 px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-lg font-semibold transition-colors"
+            onClick={handleBackToSelect}
+            className="mt-2 px-8 py-3 bg-amber-600 hover:bg-amber-500 text-white rounded-lg text-lg font-semibold transition-colors"
           >
             ステージ選択に戻る
           </button>
@@ -168,18 +320,25 @@ export default function GameScreen() {
       )}
 
       {/* ===== PLAYING / POEM-COMPLETE ===== */}
-      {phase !== 'stage-select' && phase !== 'stage-clear' && phase !== 'game-clear' && (
+      {phase !== 'stage-select' && phase !== 'order-select' && phase !== 'stage-clear' && phase !== 'game-clear' && (
         <>
-          {/* Header — author name only at start */}
-          <div className="w-full max-w-md mb-6 text-center">
+          {/* Header */}
+          <div className="w-full max-w-md mb-4 text-center">
             <div className="text-stone-400 text-xs mb-1 tracking-widest uppercase">
               第{stageNum}章 &nbsp;·&nbsp; {poemInStage} / 10
             </div>
             <div className="text-amber-300 text-2xl font-serif">{poem.author}</div>
             <div className="text-stone-500 text-xs mt-1">第 {poem.id} 首</div>
+            {/* Timer */}
+            <div className="mt-2 flex items-center justify-center gap-2">
+              <span className="text-stone-300 font-mono text-lg">{formatTime(displayMs)}</span>
+              {showPenalty && (
+                <span className="text-rose-400 text-sm font-bold animate-pulse">+1秒</span>
+              )}
+            </div>
           </div>
 
-          {/* Tanzaku Slots — all 5 start empty */}
+          {/* Tanzaku Slots */}
           <div className="w-full max-w-md flex flex-col gap-2 mb-6">
             {([0, 1, 2, 3, 4] as const).map((slotIdx) => {
               const text = filled[slotIdx];
@@ -258,9 +417,9 @@ export default function GameScreen() {
                   onClick={handleNextPoem}
                   className="w-full py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white rounded-lg text-lg font-semibold transition-colors animate-float-up"
                 >
-                  {poemIdx === 99
+                  {selectedStage >= 10 && positionInStage >= 9
                     ? '完全制覇！'
-                    : poemIdx % 10 === 9
+                    : positionInStage >= 9
                       ? '次の章へ →'
                       : '次の歌へ →'}
                 </button>
