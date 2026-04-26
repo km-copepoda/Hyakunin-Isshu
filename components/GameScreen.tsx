@@ -48,6 +48,10 @@ export default function GameScreen() {
   const [finalStageMs, setFinalStageMs] = useState(0);
   const [showPenalty, setShowPenalty] = useState(false);
 
+  // Mistake tracking
+  const [stageMistakes, setStageMistakes] = useState(0);
+  const [finalStageMistakes, setFinalStageMistakes] = useState(0);
+
   // Timer refs
   const poemStartRef = useRef<number>(0);
   const penaltyRef = useRef<number>(0);
@@ -120,6 +124,7 @@ export default function GameScreen() {
       setWrong([]);
       setPhase('playing');
       setShowNext(false);
+      if (isNewStage) setStageMistakes(0);
       startTimerForPoem(isNewStage);
     },
     [startTimerForPoem],
@@ -168,6 +173,7 @@ export default function GameScreen() {
         // Wrong: add 1-second penalty
         playWrong();
         penaltyRef.current += 1000;
+        setStageMistakes((prev) => prev + 1);
         setWrong((prev) => (prev.includes(choice) ? prev : [...prev, choice]));
         if (penaltyFlashRef.current) clearTimeout(penaltyFlashRef.current);
         setShowPenalty(true);
@@ -180,6 +186,7 @@ export default function GameScreen() {
   const handleNextPoem = useCallback(() => {
     const nextPos = positionInStage + 1;
     if (nextPos >= poemOrder.length) {
+      setFinalStageMistakes(stageMistakes);
       if (selectedStage >= 10) {
         setPhase('game-clear');
       } else {
@@ -188,7 +195,7 @@ export default function GameScreen() {
       return;
     }
     startPoem(poemOrder[nextPos], nextPos, false);
-  }, [positionInStage, poemOrder, selectedStage, startPoem]);
+  }, [positionInStage, poemOrder, selectedStage, startPoem, stageMistakes]);
 
   const handleNextStage = useCallback(() => {
     const nextStage = selectedStage + 1;
@@ -278,10 +285,19 @@ export default function GameScreen() {
         <div className="flex flex-col items-center justify-center flex-1 gap-6 animate-float-up mt-16">
           <div className="text-amber-400 text-5xl font-serif tracking-widest">第{stageNum}章</div>
           <div className="text-white text-3xl">クリア！</div>
-          <div className="bg-stone-800 border border-amber-700 rounded-xl px-10 py-6 text-center">
+          <div className="bg-stone-800 border border-amber-700 rounded-xl px-10 py-6 text-center min-w-[220px]">
             <div className="text-stone-400 text-xs mb-2 tracking-widest">タイム</div>
             <div className="text-amber-300 text-4xl font-mono">{formatTime(finalStageMs)}</div>
+            <div className={`mt-4 text-sm font-semibold ${finalStageMistakes === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {finalStageMistakes === 0 ? 'ノーミス！' : `ミス ${finalStageMistakes} 回`}
+            </div>
           </div>
+          {finalStageMistakes === 0 && (
+            <div className="bg-emerald-900/40 border border-emerald-600 rounded-xl px-8 py-4 text-center animate-float-up">
+              <div className="text-emerald-300 text-xs mb-1 tracking-widest">ノーミスタイム</div>
+              <div className="text-emerald-200 text-3xl font-mono">{formatTime(finalStageMs)}</div>
+            </div>
+          )}
           <button
             onClick={handleNextStage}
             className="mt-2 px-8 py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white rounded-lg text-lg font-semibold transition-colors"
@@ -302,10 +318,19 @@ export default function GameScreen() {
         <div className="flex flex-col items-center justify-center flex-1 gap-6 animate-float-up mt-16">
           <div className="text-amber-400 text-5xl font-serif tracking-widest">百人一首</div>
           <div className="text-white text-3xl">完全制覇！</div>
-          <div className="bg-stone-800 border border-amber-700 rounded-xl px-10 py-6 text-center">
+          <div className="bg-stone-800 border border-amber-700 rounded-xl px-10 py-6 text-center min-w-[220px]">
             <div className="text-stone-400 text-xs mb-2 tracking-widest">最終ステージ タイム</div>
             <div className="text-amber-300 text-4xl font-mono">{formatTime(finalStageMs)}</div>
+            <div className={`mt-4 text-sm font-semibold ${finalStageMistakes === 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {finalStageMistakes === 0 ? 'ノーミス！' : `ミス ${finalStageMistakes} 回`}
+            </div>
           </div>
+          {finalStageMistakes === 0 && (
+            <div className="bg-emerald-900/40 border border-emerald-600 rounded-xl px-8 py-4 text-center animate-float-up">
+              <div className="text-emerald-300 text-xs mb-1 tracking-widest">ノーミスタイム</div>
+              <div className="text-emerald-200 text-3xl font-mono">{formatTime(finalStageMs)}</div>
+            </div>
+          )}
           <div className="text-stone-300 text-base text-center leading-relaxed max-w-xs">
             百首すべての和歌を完成させました。
             <br />おめでとうございます！
