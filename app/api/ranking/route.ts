@@ -5,6 +5,7 @@ import { validateChapterQuery, ORDER_MODES, type OrderMode } from '@/lib/validat
 import { buildRanking, SEVEN_DAYS_MS, type ScoreRecord } from '@/lib/ranking';
 
 export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
@@ -65,5 +66,8 @@ export async function GET(request: Request) {
     ]),
   ) as Record<OrderMode, unknown[]>;
 
-  return NextResponse.json({ chapter, rankings });
+  return NextResponse.json(
+    { chapter, rankings },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }

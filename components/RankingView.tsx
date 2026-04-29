@@ -37,7 +37,7 @@ export default function RankingView({ chapter }: { chapter: number }) {
     let cancelled = false;
     setRankings(null);
     setError(null);
-    fetch(`/api/ranking?chapter=${chapter}`)
+    fetch(`/api/ranking?chapter=${chapter}`, { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) throw new Error(`status ${r.status}`);
         return r.json();
