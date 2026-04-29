@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import Link from 'next/link';
 import { poems } from '@/data/poems';
 import { readings } from '@/data/readings';
 import { generateOptions } from '@/lib/gameUtils';
 import { RubyText } from '@/components/RubyText';
 import { useGameSounds } from '@/lib/useGameSounds';
+import ScoreSubmit from '@/components/ScoreSubmit';
 
 type Phase = 'stage-select' | 'order-select' | 'playing' | 'poem-complete' | 'stage-clear' | 'game-clear';
 type OrderMode = 'sequential' | 'reverse' | 'random';
@@ -42,6 +44,7 @@ export default function GameScreen() {
   const [selectedStage, setSelectedStage] = useState(1);
   const [poemOrder, setPoemOrder] = useState<number[]>(() => Array.from({ length: 10 }, (_, i) => i));
   const [positionInStage, setPositionInStage] = useState(0);
+  const [currentOrderMode, setCurrentOrderMode] = useState<OrderMode>('sequential');
 
   // Timer state (display only — actual timing uses refs)
   const [displayMs, setDisplayMs] = useState(0);
@@ -144,6 +147,7 @@ export default function GameScreen() {
         : mode === 'reverse' ? [...indices].reverse()
         : shuffle(indices);
       setPoemOrder(order);
+      setCurrentOrderMode(mode);
       startPoem(order[0], 0, true);
     },
     [selectedStage, startPoem],
@@ -229,14 +233,24 @@ export default function GameScreen() {
               const first = i * 10 + 1;
               const last = first + 9;
               return (
-                <button
+                <div
                   key={sNum}
-                  onClick={() => handleSelectStage(sNum)}
-                  className="rounded-lg border-2 border-stone-600 bg-stone-800 hover:bg-stone-700 hover:border-amber-500 px-4 py-5 text-center transition-all duration-200 active:scale-95"
+                  className="rounded-lg border-2 border-stone-600 bg-stone-800 hover:border-amber-500 transition-all duration-200 overflow-hidden flex flex-col"
                 >
-                  <div className="text-amber-300 font-serif text-xl mb-1">第 {sNum} 章</div>
-                  <div className="text-stone-400 text-xs">第 {first} 〜 {last} 首</div>
-                </button>
+                  <button
+                    onClick={() => handleSelectStage(sNum)}
+                    className="px-4 pt-5 pb-3 text-center hover:bg-stone-700 active:scale-95 transition-all"
+                  >
+                    <div className="text-amber-300 font-serif text-xl mb-1">第 {sNum} 章</div>
+                    <div className="text-stone-400 text-xs">第 {first} 〜 {last} 首</div>
+                  </button>
+                  <Link
+                    href={`/ranking/${sNum}`}
+                    className="text-center px-3 py-1.5 text-stone-500 hover:text-amber-300 hover:bg-stone-700/60 text-xs border-t border-stone-700 transition-colors"
+                  >
+                    📊 ランキング
+                  </Link>
+                </div>
               );
             })}
           </div>
@@ -298,6 +312,12 @@ export default function GameScreen() {
               <div className="text-emerald-200 text-3xl font-mono">{formatTime(finalStageMs)}</div>
             </div>
           )}
+          <ScoreSubmit
+            chapter={stageNum}
+            orderMode={currentOrderMode}
+            timeMs={finalStageMs}
+            misses={finalStageMistakes}
+          />
           <button
             onClick={handleNextStage}
             className="mt-2 px-8 py-3 bg-amber-600 hover:bg-amber-500 active:bg-amber-700 text-white rounded-lg text-lg font-semibold transition-colors"
@@ -331,6 +351,12 @@ export default function GameScreen() {
               <div className="text-emerald-200 text-3xl font-mono">{formatTime(finalStageMs)}</div>
             </div>
           )}
+          <ScoreSubmit
+            chapter={stageNum}
+            orderMode={currentOrderMode}
+            timeMs={finalStageMs}
+            misses={finalStageMistakes}
+          />
           <div className="text-stone-300 text-base text-center leading-relaxed max-w-xs">
             百首すべての和歌を完成させました。
             <br />おめでとうございます！
