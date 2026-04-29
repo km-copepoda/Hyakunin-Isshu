@@ -248,7 +248,7 @@ export default function GameScreen() {
                     href={`/ranking/${sNum}`}
                     className="text-center px-3 py-1.5 text-stone-500 hover:text-amber-300 hover:bg-stone-700/60 text-xs border-t border-stone-700 transition-colors"
                   >
-                    📊 ランキング
+                    📜 名うての歌詠み
                   </Link>
                 </div>
               );

@@ -72,12 +72,12 @@ export default function ScoreSubmit({
   if (status === 'submitted') {
     return (
       <div className="w-full max-w-xs flex flex-col items-center gap-3 mt-2">
-        <div className="text-emerald-300 text-sm">ランキングに登録しました！</div>
+        <div className="text-emerald-300 text-sm">名乗りを上げました！</div>
         <Link
           href={`/ranking/${chapter}`}
           className="px-6 py-2 bg-stone-700 hover:bg-stone-600 text-amber-200 rounded-lg text-sm transition-colors"
         >
-          ランキングを見る →
+          名うての歌詠みを見る →
         </Link>
       </div>
     );
@@ -100,7 +100,7 @@ export default function ScoreSubmit({
             disabled={status === 'submitting' || name.trim().length === 0}
             className="w-full px-6 py-2 bg-amber-700 hover:bg-amber-600 active:bg-amber-800 disabled:bg-stone-700 disabled:text-stone-500 text-white rounded-lg text-sm font-semibold transition-colors"
           >
-            {status === 'submitting' ? '送信中...' : 'ランキングに登録'}
+            {status === 'submitting' ? '送信中...' : '名乗りを上げる'}
           </button>
         </>
       ) : (
@@ -110,7 +110,7 @@ export default function ScoreSubmit({
             disabled={status === 'submitting'}
             className="w-full px-6 py-2 bg-amber-700 hover:bg-amber-600 active:bg-amber-800 disabled:bg-stone-700 text-white rounded-lg text-sm font-semibold transition-colors"
           >
-            {status === 'submitting' ? '送信中...' : `${name} で登録`}
+            {status === 'submitting' ? '送信中...' : `${name} で名乗りを上げる`}
           </button>
           <button
             onClick={() => setEditing(true)}

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { formatTime } from '@/lib/formatTime';
 import { getOrCreatePlayerId } from '@/lib/playerId';
+import { getRankTitle } from '@/data/rankTitles';
 
 type OrderMode = 'sequential' | 'reverse' | 'random';
 
@@ -66,9 +67,10 @@ export default function RankingView({ chapter }: { chapter: number }) {
             ← ステージ選択へ
           </Link>
           <h1 className="text-amber-400 text-3xl font-serif tracking-widest">
-            第 {chapter} 章 ランキング
+            第 {chapter} 章
           </h1>
-          <p className="text-stone-500 text-xs mt-2">過去7日間のベストタイム TOP20</p>
+          <p className="text-amber-200 text-base font-serif mt-1">名うての歌詠み 二十選</p>
+          <p className="text-stone-500 text-xs mt-2">過去7日間 上位20名</p>
         </div>
 
         {error && (
@@ -119,15 +121,16 @@ function RankingSection({
           まだスコアがありません。
         </div>
       ) : (
-        <ol className="flex flex-col gap-1.5">
+        <ol className="flex flex-col gap-2">
           {entries.map((e) => {
             const isMine = e.playerId === myPlayerId;
             const isTop3 = e.rank <= 3;
+            const title = getRankTitle(e.rank);
             return (
               <li
                 key={`${e.playerId}-${e.playedAt}`}
                 className={[
-                  'flex items-center gap-3 rounded-lg border px-3 py-2.5',
+                  'rounded-lg border px-3 py-2.5',
                   isMine
                     ? 'bg-amber-900/40 border-amber-500'
                     : isTop3
@@ -135,27 +138,41 @@ function RankingSection({
                       : 'bg-stone-800/60 border-stone-700',
                 ].join(' ')}
               >
-                <div
-                  className={[
-                    'font-serif text-lg w-9 text-center shrink-0',
-                    e.rank === 1
-                      ? 'text-amber-300'
-                      : e.rank === 2
-                        ? 'text-stone-300'
-                        : e.rank === 3
-                          ? 'text-amber-700'
-                          : 'text-stone-500',
-                  ].join(' ')}
-                >
-                  {e.rank}
+                <div className="flex items-center gap-3">
+                  <div
+                    className={[
+                      'font-serif text-lg w-9 text-center shrink-0',
+                      e.rank === 1
+                        ? 'text-amber-300'
+                        : e.rank === 2
+                          ? 'text-stone-300'
+                          : e.rank === 3
+                            ? 'text-amber-700'
+                            : 'text-stone-500',
+                    ].join(' ')}
+                  >
+                    {e.rank}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {title && (
+                      <div className="text-amber-300 font-serif text-sm">
+                        {title.name}
+                      </div>
+                    )}
+                    <div className="text-amber-100 text-base truncate">
+                      {e.name}
+                      <span className="text-stone-500 text-xs ml-2">ミス {e.misses}</span>
+                    </div>
+                  </div>
+                  <div className="text-amber-200 font-mono text-base">
+                    {formatTime(e.timeMs)}
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <div className="text-amber-100 text-base truncate">{e.name}</div>
-                  <div className="text-stone-500 text-xs">ミス {e.misses} 回</div>
-                </div>
-                <div className="text-amber-200 font-mono text-base">
-                  {formatTime(e.timeMs)}
-                </div>
+                {title && (
+                  <div className="text-stone-400 text-xs mt-1.5 leading-snug pl-12">
+                    {title.description}
+                  </div>
+                )}
               </li>
             );
           })}
