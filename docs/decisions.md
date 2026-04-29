@@ -56,3 +56,15 @@ scores
 - 既存ゲームは純フロントで完結していたが、章ごとにベストタイムを共有できる軽量ランキングを加えることで再プレイ動機を作る
 - 1週間のスライディングウィンドウにすることで、上位独占の継続を防ぎ「直近の腕前比べ」感を演出する
 - TOP20 までで十分な可視性を確保しつつ、無料枠での読み取りコストも抑える
+
+## 2026-04-29: Vercel デプロイ時にマイグレーションを自動適用
+
+### 決定内容
+- `package.json` に `vercel-build` スクリプトを追加し、Vercel 本番ビルド時に `drizzle-kit migrate && next build` を実行する
+- `vercel-build` は Vercel が `build` よりも優先して使う公式仕様。ローカルの `npm run build` は従来通り `next build` のみで影響なし
+- 初回マイグレーション SQL（`drizzle/0000_*.sql`）の `CREATE TYPE` を `DO $$ ... EXCEPTION WHEN duplicate_object ... $$` でベキ等化。`db:push` で先に当てた DB でも `migrate` を再実行できるようにする
+
+### 理由
+- 環境変数の追加・スキーマ変更の度に手動で `db:push` を打つフローは事故が起きやすい（環境差・実行忘れ）
+- `vercel-build` を使えば Vercel 上のデプロイで自動的に最新 migration が当たり、ローカル動作には影響しないため切り分けが綺麗
+- migration を idempotent にしたのは、過去に `db:push` で先回りした DB でも `drizzle-kit migrate` の `__drizzle_migrations` テーブル登録が走り、以降は順次差分のみが適用されるようにするため

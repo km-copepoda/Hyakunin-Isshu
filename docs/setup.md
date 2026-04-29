@@ -31,11 +31,15 @@ npx vercel env pull .env.local
 
 ### 3. マイグレーション実行
 
-```bash
-npm run db:push
-```
+**Vercel 本番環境では自動で当たる**（`vercel-build` スクリプトが `drizzle-kit migrate` を実行する）ので、初回デプロイ時に自動でテーブルが作成される。
 
-これで `scores` テーブルと `order_mode` enum が DB に作成される。
+ローカルで動作確認したい場合のみ手動実行：
+
+```bash
+npm run db:push       # 開発用（schema.ts から直接同期）
+# または
+npx drizzle-kit migrate  # 本番と同じ migration ファイルを当てる
+```
 
 ### 4. 動作確認
 

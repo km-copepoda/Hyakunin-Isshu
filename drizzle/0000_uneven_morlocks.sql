@@ -1,4 +1,8 @@
-CREATE TYPE "public"."order_mode" AS ENUM('sequential', 'reverse', 'random');--> statement-breakpoint
+DO $$ BEGIN
+	CREATE TYPE "public"."order_mode" AS ENUM('sequential', 'reverse', 'random');
+EXCEPTION
+	WHEN duplicate_object THEN null;
+END $$;--> statement-breakpoint
 CREATE TABLE IF NOT EXISTS "scores" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"player_id" uuid NOT NULL,
