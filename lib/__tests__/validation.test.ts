@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
   validateScoreInput,
-  validateRankingQuery,
+  validateChapterQuery,
   MIN_VALID_TIME_MS,
   MAX_NAME_LENGTH,
   ORDER_MODES,
@@ -94,26 +94,29 @@ describe('validateScoreInput', () => {
   });
 });
 
-describe('validateRankingQuery', () => {
-  it('parses chapter and orderMode from strings', () => {
-    const result = validateRankingQuery({ chapter: '3', order: 'random' });
+describe('validateChapterQuery', () => {
+  it('parses chapter from string', () => {
+    const result = validateChapterQuery({ chapter: '3' });
     expect(result.ok).toBe(true);
-    if (result.ok) {
-      expect(result.data.chapter).toBe(3);
-      expect(result.data.orderMode).toBe('random');
-    }
+    if (result.ok) expect(result.data.chapter).toBe(3);
   });
 
   it('rejects missing chapter', () => {
-    expect(validateRankingQuery({ order: 'sequential' }).ok).toBe(false);
+    expect(validateChapterQuery({}).ok).toBe(false);
   });
 
-  it('rejects bad orderMode', () => {
-    expect(validateRankingQuery({ chapter: '1', order: 'nope' }).ok).toBe(false);
+  it('rejects non-integer chapter', () => {
+    expect(validateChapterQuery({ chapter: '1.5' }).ok).toBe(false);
+    expect(validateChapterQuery({ chapter: 'abc' }).ok).toBe(false);
   });
 
   it('rejects chapter out of range', () => {
-    expect(validateRankingQuery({ chapter: '11', order: 'sequential' }).ok).toBe(false);
-    expect(validateRankingQuery({ chapter: '0', order: 'sequential' }).ok).toBe(false);
+    expect(validateChapterQuery({ chapter: '11' }).ok).toBe(false);
+    expect(validateChapterQuery({ chapter: '0' }).ok).toBe(false);
+  });
+
+  it('accepts boundary values', () => {
+    expect(validateChapterQuery({ chapter: '1' }).ok).toBe(true);
+    expect(validateChapterQuery({ chapter: '10' }).ok).toBe(true);
   });
 });

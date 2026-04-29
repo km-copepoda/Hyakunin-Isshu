@@ -75,18 +75,15 @@ export function validateScoreInput(input: unknown): ValidationResult<ValidatedSc
   };
 }
 
-export type ValidatedRankingQuery = { chapter: number; orderMode: OrderMode };
+export type ValidatedChapterQuery = { chapter: number };
 
-export function validateRankingQuery(query: unknown): ValidationResult<ValidatedRankingQuery> {
+export function validateChapterQuery(query: unknown): ValidationResult<ValidatedChapterQuery> {
   if (!isObject(query)) return { ok: false, error: 'query must be an object' };
-  const { chapter, order } = query;
+  const { chapter } = query;
   if (typeof chapter !== 'string') return { ok: false, error: 'chapter is required' };
   const chapterNum = Number(chapter);
   if (!Number.isInteger(chapterNum) || chapterNum < MIN_CHAPTER || chapterNum > MAX_CHAPTER) {
     return { ok: false, error: `chapter must be integer in ${MIN_CHAPTER}..${MAX_CHAPTER}` };
   }
-  if (!isOrderMode(order)) {
-    return { ok: false, error: 'order must be sequential|reverse|random' };
-  }
-  return { ok: true, data: { chapter: chapterNum, orderMode: order } };
+  return { ok: true, data: { chapter: chapterNum } };
 }

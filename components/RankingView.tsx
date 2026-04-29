@@ -16,15 +16,16 @@ type Entry = {
   playedAt: string;
 };
 
-const ORDER_TABS: { mode: OrderMode; label: string }[] = [
-  { mode: 'sequential', label: '順順' },
-  { mode: 'reverse', label: '逆順' },
-  { mode: 'random', label: 'ランダム' },
+type RankingsByOrder = Record<OrderMode, Entry[]>;
+
+const ORDER_LABELS: { mode: OrderMode; label: string; sub: string }[] = [
+  { mode: 'sequential', label: '順順', sub: '第1首 → 第10首' },
+  { mode: 'reverse', label: '逆順', sub: '第10首 → 第1首' },
+  { mode: 'random', label: 'ランダム', sub: 'シャッフル' },
 ];
 
 export default function RankingView({ chapter }: { chapter: number }) {
-  const [orderMode, setOrderMode] = useState<OrderMode>('sequential');
-  const [entries, setEntries] = useState<Entry[] | null>(null);
+  const [rankings, setRankings] = useState<RankingsByOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [myPlayerId, setMyPlayerId] = useState<string>('');
 
@@ -34,16 +35,16 @@ export default function RankingView({ chapter }: { chapter: number }) {
 
   useEffect(() => {
     let cancelled = false;
-    setEntries(null);
+    setRankings(null);
     setError(null);
-    fetch(`/api/ranking?chapter=${chapter}&order=${orderMode}`)
+    fetch(`/api/ranking?chapter=${chapter}`)
       .then(async (r) => {
         if (!r.ok) throw new Error(`status ${r.status}`);
         return r.json();
       })
       .then((data) => {
         if (cancelled) return;
-        setEntries(data.ranking ?? []);
+        setRankings(data.rankings ?? null);
       })
       .catch((e: Error) => {
         if (cancelled) return;
@@ -52,7 +53,7 @@ export default function RankingView({ chapter }: { chapter: number }) {
     return () => {
       cancelled = true;
     };
-  }, [chapter, orderMode]);
+  }, [chapter]);
 
   return (
     <div className="min-h-screen bg-stone-900 flex flex-col items-center px-4 py-8">
@@ -70,87 +71,96 @@ export default function RankingView({ chapter }: { chapter: number }) {
           <p className="text-stone-500 text-xs mt-2">過去7日間のベストタイム TOP20</p>
         </div>
 
-        <div className="grid grid-cols-3 gap-2 mb-5">
-          {ORDER_TABS.map(({ mode, label }) => {
-            const active = mode === orderMode;
-            return (
-              <button
-                key={mode}
-                onClick={() => setOrderMode(mode)}
-                className={[
-                  'rounded-lg border px-3 py-2 font-serif text-sm transition-all',
-                  active
-                    ? 'bg-amber-600 border-amber-500 text-white'
-                    : 'bg-stone-800 border-stone-700 text-stone-400 hover:border-amber-500 hover:text-amber-200',
-                ].join(' ')}
-              >
-                {label}
-              </button>
-            );
-          })}
-        </div>
-
         {error && (
           <div className="text-rose-400 text-sm text-center py-8">エラー: {error}</div>
         )}
 
-        {!error && entries === null && (
+        {!error && rankings === null && (
           <div className="text-stone-500 text-sm text-center py-8">読み込み中...</div>
         )}
 
-        {!error && entries !== null && entries.length === 0 && (
-          <div className="text-stone-500 text-sm text-center py-8">
-            まだスコアがありません。
-            <br />一番乗りを目指そう！
+        {!error && rankings !== null && (
+          <div className="flex flex-col gap-8">
+            {ORDER_LABELS.map(({ mode, label, sub }) => (
+              <RankingSection
+                key={mode}
+                label={label}
+                sub={sub}
+                entries={rankings[mode] ?? []}
+                myPlayerId={myPlayerId}
+              />
+            ))}
           </div>
-        )}
-
-        {!error && entries !== null && entries.length > 0 && (
-          <ol className="flex flex-col gap-1.5">
-            {entries.map((e) => {
-              const isMine = e.playerId === myPlayerId;
-              const isTop3 = e.rank <= 3;
-              return (
-                <li
-                  key={`${e.playerId}-${e.playedAt}`}
-                  className={[
-                    'flex items-center gap-3 rounded-lg border px-3 py-2.5',
-                    isMine
-                      ? 'bg-amber-900/40 border-amber-500'
-                      : isTop3
-                        ? 'bg-stone-800 border-amber-800'
-                        : 'bg-stone-800/60 border-stone-700',
-                  ].join(' ')}
-                >
-                  <div
-                    className={[
-                      'font-serif text-lg w-9 text-center shrink-0',
-                      e.rank === 1
-                        ? 'text-amber-300'
-                        : e.rank === 2
-                          ? 'text-stone-300'
-                          : e.rank === 3
-                            ? 'text-amber-700'
-                            : 'text-stone-500',
-                    ].join(' ')}
-                  >
-                    {e.rank}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-amber-100 text-base truncate">{e.name}</div>
-                    <div className="text-stone-500 text-xs">
-                      ミス {e.misses} 回
-                    </div>
-                  </div>
-                  <div className="text-amber-200 font-mono text-base">
-                    {formatTime(e.timeMs)}
-                  </div>
-                </li>
-              );
-            })}
-          </ol>
         )}
       </div>
     </div>
+  );
+}
+
+function RankingSection({
+  label,
+  sub,
+  entries,
+  myPlayerId,
+}: {
+  label: string;
+  sub: string;
+  entries: Entry[];
+  myPlayerId: string;
+}) {
+  return (
+    <section>
+      <div className="flex items-baseline gap-3 mb-3 border-b border-stone-700 pb-2">
+        <h2 className="text-amber-300 font-serif text-xl">{label}</h2>
+        <span className="text-stone-500 text-xs">{sub}</span>
+      </div>
+      {entries.length === 0 ? (
+        <div className="text-stone-500 text-sm text-center py-4">
+          まだスコアがありません。
+        </div>
+      ) : (
+        <ol className="flex flex-col gap-1.5">
+          {entries.map((e) => {
+            const isMine = e.playerId === myPlayerId;
+            const isTop3 = e.rank <= 3;
+            return (
+              <li
+                key={`${e.playerId}-${e.playedAt}`}
+                className={[
+                  'flex items-center gap-3 rounded-lg border px-3 py-2.5',
+                  isMine
+                    ? 'bg-amber-900/40 border-amber-500'
+                    : isTop3
+                      ? 'bg-stone-800 border-amber-800'
+                      : 'bg-stone-800/60 border-stone-700',
+                ].join(' ')}
+              >
+                <div
+                  className={[
+                    'font-serif text-lg w-9 text-center shrink-0',
+                    e.rank === 1
+                      ? 'text-amber-300'
+                      : e.rank === 2
+                        ? 'text-stone-300'
+                        : e.rank === 3
+                          ? 'text-amber-700'
+                          : 'text-stone-500',
+                  ].join(' ')}
+                >
+                  {e.rank}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-amber-100 text-base truncate">{e.name}</div>
+                  <div className="text-stone-500 text-xs">ミス {e.misses} 回</div>
+                </div>
+                <div className="text-amber-200 font-mono text-base">
+                  {formatTime(e.timeMs)}
+                </div>
+              </li>
+            );
+          })}
+        </ol>
+      )}
+    </section>
   );
 }
