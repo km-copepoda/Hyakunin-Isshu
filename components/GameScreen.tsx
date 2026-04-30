@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { poems } from '@/data/poems';
 import { readings } from '@/data/readings';
+import { authorReadings } from '@/data/authorReadings';
 import { generateOptions } from '@/lib/gameUtils';
 import { RubyText } from '@/components/RubyText';
 import { useGameSounds } from '@/lib/useGameSounds';
@@ -379,6 +380,7 @@ export default function GameScreen() {
               第{stageNum}章 &nbsp;·&nbsp; {poemInStage} / 10
             </div>
             <div className="text-amber-300 text-2xl font-serif">{poem.author}</div>
+            <div className="text-amber-200/70 text-xs mt-0.5 tracking-wide">{authorReadings[poemIdx]}</div>
             <div className="text-stone-500 text-xs mt-1">第 {poem.id} 首</div>
             {/* Timer */}
             <div className="mt-2 flex items-center justify-center gap-2">
