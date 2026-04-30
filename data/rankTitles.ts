@@ -3,16 +3,16 @@ export type RankTitle = {
 };
 
 export const RANK_TITLES: RankTitle[] = [
-  { name: '天智天皇' },
-  { name: '京極中納言' },
-  { name: '柿本人麿' },
-  { name: '小野小町' },
-  { name: '在原業平' },
-  { name: '紫式部' },
-  { name: '清少納言' },
-  { name: '崇徳院' },
-  { name: '西行法師' },
-  { name: '和泉式部' },
+  { name: '天皇' },
+  { name: '摂関' },
+  { name: '大臣' },
+  { name: '大納言' },
+  { name: '中納言' },
+  { name: '参議' },
+  { name: '殿上人' },
+  { name: '公卿' },
+  { name: '雲上人' },
+  { name: '貴人' },
 ];
 
 export function getRankTitle(rank: number): RankTitle | null {

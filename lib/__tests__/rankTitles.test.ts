@@ -3,11 +3,11 @@ import { getRankTitle, RANK_TITLES } from '@/data/rankTitles';
 
 describe('getRankTitle', () => {
   it('returns the 1st place title for rank 1', () => {
-    expect(getRankTitle(1)?.name).toBe('天智天皇');
+    expect(getRankTitle(1)?.name).toBe('天皇');
   });
 
   it('returns the 10th place title for rank 10', () => {
-    expect(getRankTitle(10)?.name).toBe('和泉式部');
+    expect(getRankTitle(10)?.name).toBe('貴人');
   });
 
   it('returns null for rank 0 and rank 11+', () => {
