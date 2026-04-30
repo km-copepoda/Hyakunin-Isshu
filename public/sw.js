@@ -1,4 +1,4 @@
-const CACHE_NAME = 'hyakunin-v1';
+const CACHE_NAME = 'hyakunin-v2';
 
 self.addEventListener('install', (event) => {
   self.skipWaiting();
@@ -18,6 +18,29 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   if (event.request.method !== 'GET') return;
+
+  const url = new URL(event.request.url);
+
+  // API リクエストはキャッシュ禁止（常に最新を取得）
+  if (url.pathname.startsWith('/api/')) return;
+
+  // ナビゲーション（HTML）は network-first（新デプロイをすぐ反映、オフラインはキャッシュ）
+  if (event.request.mode === 'navigate') {
+    event.respondWith(
+      fetch(event.request)
+        .then((response) => {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          return response;
+        })
+        .catch(() =>
+          caches.match(event.request).then((cached) => cached ?? caches.match('/'))
+        )
+    );
+    return;
+  }
+
+  // 静的アセット（CSS/JS/画像など）は cache-first
   event.respondWith(
     caches.match(event.request).then(
       (cached) =>
