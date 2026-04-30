@@ -4,15 +4,15 @@ export type RankTitle = {
 
 export const RANK_TITLES: RankTitle[] = [
   { name: '天皇' },
+  { name: '上皇' },
+  { name: '親王' },
   { name: '摂関' },
-  { name: '大臣' },
+  { name: '太政大臣' },
+  { name: '左大臣' },
+  { name: '右大臣' },
   { name: '大納言' },
   { name: '中納言' },
   { name: '参議' },
-  { name: '殿上人' },
-  { name: '公卿' },
-  { name: '雲上人' },
-  { name: '貴人' },
 ];
 
 export function getRankTitle(rank: number): RankTitle | null {
