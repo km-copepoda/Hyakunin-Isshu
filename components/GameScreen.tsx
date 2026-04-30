@@ -81,7 +81,7 @@ export default function GameScreen() {
 
   useEffect(() => {
     if (phase === 'playing') {
-      setOptions(generateOptions(poems, poemIdx, step));
+      setOptions(generateOptions(poems, readings, poemIdx, step));
     }
   }, [poemIdx, step, phase]);
 
