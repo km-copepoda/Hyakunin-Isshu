@@ -117,14 +117,14 @@ describe('buildRanking', () => {
     expect(ranking[1].timeMs).toBe(11000);
   });
 
-  it('returns at most TOP-N entries (default 20)', () => {
-    const scores: ScoreRecord[] = Array.from({ length: 25 }, (_, i) =>
+  it('returns at most TOP-N entries (default 10)', () => {
+    const scores: ScoreRecord[] = Array.from({ length: 15 }, (_, i) =>
       make({ playerId: `p${i}`, timeMs: 10000 + i, playedAt: daysAgo(0) }),
     );
     const ranking = buildRanking(scores, NOW);
-    expect(ranking).toHaveLength(20);
+    expect(ranking).toHaveLength(10);
     expect(ranking[0].playerId).toBe('p0');
-    expect(ranking[19].playerId).toBe('p19');
+    expect(ranking[9].playerId).toBe('p9');
   });
 
   it('honors custom topN', () => {

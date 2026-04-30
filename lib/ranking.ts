@@ -9,7 +9,7 @@ export type ScoreRecord = {
 export type RankingEntry = ScoreRecord & { rank: number };
 
 export const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
-export const DEFAULT_TOP_N = 20;
+export const DEFAULT_TOP_N = 10;
 
 export function compareScore(a: ScoreRecord, b: ScoreRecord): number {
   if (a.timeMs !== b.timeMs) return a.timeMs - b.timeMs;

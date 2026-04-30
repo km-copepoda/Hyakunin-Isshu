@@ -69,8 +69,8 @@ export default function RankingView({ chapter }: { chapter: number }) {
           <h1 className="text-amber-400 text-3xl font-serif tracking-widest">
             第 {chapter} 章
           </h1>
-          <p className="text-amber-200 text-base font-serif mt-1">名うての歌詠み 二十選</p>
-          <p className="text-stone-500 text-xs mt-2">過去7日間 上位20名</p>
+          <p className="text-amber-200 text-base font-serif mt-1">名うての歌詠み 十選</p>
+          <p className="text-stone-500 text-xs mt-2">過去7日間 上位10名</p>
         </div>
 
         {error && (

@@ -13,16 +13,6 @@ export const RANK_TITLES: RankTitle[] = [
   { name: '崇徳院' },
   { name: '西行法師' },
   { name: '和泉式部' },
-  { name: '大納言公任' },
-  { name: '参議篁' },
-  { name: '赤染衛門' },
-  { name: '紀貫之' },
-  { name: '蝉丸' },
-  { name: '伊勢大輔' },
-  { name: '小式部内侍' },
-  { name: '曾禰好忠' },
-  { name: '式子内親王' },
-  { name: '壬生忠岑' },
 ];
 
 export function getRankTitle(rank: number): RankTitle | null {

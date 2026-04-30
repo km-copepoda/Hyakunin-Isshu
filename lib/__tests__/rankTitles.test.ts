@@ -6,13 +6,13 @@ describe('getRankTitle', () => {
     expect(getRankTitle(1)?.name).toBe('天智天皇');
   });
 
-  it('returns the 20th place title for rank 20', () => {
-    expect(getRankTitle(20)?.name).toBe('壬生忠岑');
+  it('returns the 10th place title for rank 10', () => {
+    expect(getRankTitle(10)?.name).toBe('和泉式部');
   });
 
-  it('returns null for rank 0 and rank 21+', () => {
+  it('returns null for rank 0 and rank 11+', () => {
     expect(getRankTitle(0)).toBeNull();
-    expect(getRankTitle(21)).toBeNull();
+    expect(getRankTitle(11)).toBeNull();
     expect(getRankTitle(-1)).toBeNull();
   });
 
@@ -20,8 +20,8 @@ describe('getRankTitle', () => {
     expect(getRankTitle(1.5)).toBeNull();
   });
 
-  it('has exactly 20 titles defined', () => {
-    expect(RANK_TITLES).toHaveLength(20);
+  it('has exactly 10 titles defined', () => {
+    expect(RANK_TITLES).toHaveLength(10);
   });
 
   it('all titles have non-empty name', () => {
