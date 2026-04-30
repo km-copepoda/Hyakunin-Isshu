@@ -130,7 +130,7 @@ function RankingSection({
               <li
                 key={`${e.playerId}-${e.playedAt}`}
                 className={[
-                  'rounded-lg border px-3 py-2.5',
+                  'flex items-center gap-3 rounded-lg border px-3 py-2.5',
                   isMine
                     ? 'bg-amber-900/40 border-amber-500'
                     : isTop3
@@ -138,41 +138,39 @@ function RankingSection({
                       : 'bg-stone-800/60 border-stone-700',
                 ].join(' ')}
               >
-                <div className="flex items-center gap-3">
-                  <div
-                    className={[
-                      'font-serif text-lg w-9 text-center shrink-0',
-                      e.rank === 1
-                        ? 'text-amber-300'
-                        : e.rank === 2
-                          ? 'text-stone-300'
-                          : e.rank === 3
-                            ? 'text-amber-700'
-                            : 'text-stone-500',
-                    ].join(' ')}
-                  >
-                    {e.rank}
+                <div
+                  className={[
+                    'font-serif text-lg w-9 text-center shrink-0',
+                    e.rank === 1
+                      ? 'text-amber-300'
+                      : e.rank === 2
+                        ? 'text-stone-300'
+                        : e.rank === 3
+                          ? 'text-amber-700'
+                          : 'text-stone-500',
+                  ].join(' ')}
+                >
+                  {e.rank}
+                </div>
+                <div className="flex-1 min-w-0 text-sm leading-tight">
+                  <div className="truncate">
+                    <span className="text-stone-500">名前：</span>
+                    <span className="text-amber-100">{e.name}</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    {title && (
-                      <div className="text-amber-300 font-serif text-sm">
-                        {title.name}
-                      </div>
-                    )}
-                    <div className="text-amber-100 text-base truncate">
-                      {e.name}
-                      <span className="text-stone-500 text-xs ml-2">ミス {e.misses}</span>
+                  {title && (
+                    <div className="truncate">
+                      <span className="text-stone-500">称号：</span>
+                      <span className="text-amber-300 font-serif">{title.name}</span>
                     </div>
-                  </div>
-                  <div className="text-amber-200 font-mono text-base">
-                    {formatTime(e.timeMs)}
+                  )}
+                  <div>
+                    <span className="text-stone-500">ミス：</span>
+                    <span className="text-stone-300">{e.misses}回</span>
                   </div>
                 </div>
-                {title && (
-                  <div className="text-stone-400 text-xs mt-1.5 leading-snug pl-12">
-                    {title.description}
-                  </div>
-                )}
+                <div className="text-amber-200 font-mono text-base shrink-0">
+                  {formatTime(e.timeMs)}
+                </div>
               </li>
             );
           })}

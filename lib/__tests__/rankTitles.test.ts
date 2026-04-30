@@ -24,10 +24,9 @@ describe('getRankTitle', () => {
     expect(RANK_TITLES).toHaveLength(20);
   });
 
-  it('all titles have non-empty name and description', () => {
+  it('all titles have non-empty name', () => {
     for (const t of RANK_TITLES) {
       expect(t.name.length).toBeGreaterThan(0);
-      expect(t.description.length).toBeGreaterThan(0);
     }
   });
 });
