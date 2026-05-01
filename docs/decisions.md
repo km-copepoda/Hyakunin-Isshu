@@ -1,5 +1,29 @@
 # アーキテクチャ決定記録
 
+## 2026-05-02: 「歌人当て」モードを追加（既存「句当て」と並列）
+
+### 決定内容
+- 既存の「作者＋上の句 → 残り4句を埋める」モードに加えて、「**和歌全文 → 4択で歌人を当てる**」モードを追加
+- ホーム画面 (`/`) をモード選択画面とし、`/play/segments`（旧「句当て」）と `/play/author`（新「歌人当て」）にルーティング
+- 新モードも 1章=10首 / 順順・逆順・ランダム / 誤答1秒ペナルティ / ランキング登録、と既存仕様を踏襲
+- 4択の誤答歌人は「正解作者の読み（authorReadings）と類似度の高い上位8件」プールから3つランダム抽出（既存 `similarity.ts` を流用、`gameUtils.ts` に `generateAuthorOptions` を追加）
+
+### スキーマ
+- `scores` テーブルに `game_mode` 列（`'segments' | 'author'`）を追加。既存行は `'segments'` をデフォルトとして扱う
+- 既存 `(chapter, order_mode, played_at)` インデックスを `(chapter, game_mode, order_mode, played_at)` に置換
+- migration: `drizzle/0001_add_game_mode.sql`（`CREATE TYPE` / `ADD COLUMN` を idempotent 化、既存 0000 の方針を踏襲）
+
+### ランキング URL
+- 既存 `/ranking/[chapter]` は据え置きで「句当て」、新規 `/ranking/author/[chapter]` を「歌人当て」用として追加
+- API: `/api/ranking?chapter=X&gameMode=author|segments` の単一エンドポイントで両モードに対応（gameMode 省略時は `segments`、後方互換）
+- 共通の `RankingView` コンポーネントに `gameMode` prop を持たせ、両ページで再利用
+
+### 理由
+- 「作者→句」と「句→作者」は学習効果が異なるため、両方を提供することで反復学習の幅が広がる
+- ランキングを `gameMode` で分けたのは、難易度・所要時間が大きく異なる2モードを同一テーブルに混ぜると公平性が損なわれるため
+- ホーム→モード選択→ステージ選択 の段階を増やしたが、既存ユーザーが「歌人当て」を意識的に選ぶ導線を確保することを優先した
+- 既存 API は `gameMode` 省略時に `segments` 扱いとし、旧クライアント・旧 PWA キャッシュからのリクエストでも壊れないようにした
+
 ## 2026-04-30: クイズの選択肢を「読み類似度」ベースで生成
 
 ### 決定内容

@@ -10,16 +10,19 @@ import {
 import { MAX_NAME_LENGTH } from '@/lib/validation';
 
 type OrderMode = 'sequential' | 'reverse' | 'random';
+type GameMode = 'segments' | 'author';
 type Status = 'idle' | 'submitting' | 'submitted' | 'error';
 
 export default function ScoreSubmit({
   chapter,
   orderMode,
+  gameMode = 'segments',
   timeMs,
   misses,
 }: {
   chapter: number;
   orderMode: OrderMode;
+  gameMode?: GameMode;
   timeMs: number;
   misses: number;
 }) {
@@ -51,6 +54,7 @@ export default function ScoreSubmit({
           name: trimmed,
           chapter,
           orderMode,
+          gameMode,
           timeMs,
           misses,
         }),
@@ -70,11 +74,13 @@ export default function ScoreSubmit({
   };
 
   if (status === 'submitted') {
+    const rankingHref =
+      gameMode === 'author' ? `/ranking/author/${chapter}` : `/ranking/${chapter}`;
     return (
       <div className="w-full max-w-xs flex flex-col items-center gap-3 mt-2">
         <div className="text-emerald-300 text-sm">名乗りを上げました！</div>
         <Link
-          href={`/ranking/${chapter}`}
+          href={rankingHref}
           className="px-6 py-2 bg-stone-700 hover:bg-stone-600 text-amber-200 rounded-lg text-sm transition-colors"
         >
           名うての歌詠みを見る →

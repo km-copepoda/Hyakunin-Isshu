@@ -17,13 +17,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  const { playerId, name, chapter, orderMode, timeMs, misses } = result.data;
+  const { playerId, name, chapter, orderMode, gameMode, timeMs, misses } = result.data;
 
   await db.insert(schema.scores).values({
     playerId,
     name,
     chapter,
     orderMode,
+    gameMode,
     timeMs,
     misses,
   });

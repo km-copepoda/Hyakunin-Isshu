@@ -1,0 +1,143 @@
+{
+  "id": "728587b4-c830-43af-95de-42ae6a321c6a",
+  "prevId": "b226203c-3537-4a37-b5a3-11d1918ee65d",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.scores": {
+      "name": "scores",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "player_id": {
+          "name": "player_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar(16)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chapter": {
+          "name": "chapter",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_mode": {
+          "name": "order_mode",
+          "type": "order_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "game_mode": {
+          "name": "game_mode",
+          "type": "game_mode",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'segments'"
+        },
+        "time_ms": {
+          "name": "time_ms",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "misses": {
+          "name": "misses",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "played_at": {
+          "name": "played_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "scores_ranking_idx": {
+          "name": "scores_ranking_idx",
+          "columns": [
+            {
+              "expression": "chapter",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "game_mode",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "order_mode",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "played_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.game_mode": {
+      "name": "game_mode",
+      "schema": "public",
+      "values": [
+        "segments",
+        "author"
+      ]
+    },
+    "public.order_mode": {
+      "name": "order_mode",
+      "schema": "public",
+      "values": [
+        "sequential",
+        "reverse",
+        "random"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

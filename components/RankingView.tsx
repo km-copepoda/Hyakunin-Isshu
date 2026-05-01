@@ -7,6 +7,7 @@ import { getOrCreatePlayerId } from '@/lib/playerId';
 import { getRankTitle } from '@/data/rankTitles';
 
 type OrderMode = 'sequential' | 'reverse' | 'random';
+type GameMode = 'segments' | 'author';
 
 type Entry = {
   rank: number;
@@ -25,7 +26,13 @@ const ORDER_LABELS: { mode: OrderMode; label: string; sub: string }[] = [
   { mode: 'random', label: 'ランダム', sub: 'シャッフル' },
 ];
 
-export default function RankingView({ chapter }: { chapter: number }) {
+export default function RankingView({
+  chapter,
+  gameMode = 'segments',
+}: {
+  chapter: number;
+  gameMode?: GameMode;
+}) {
   const [rankings, setRankings] = useState<RankingsByOrder | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [myPlayerId, setMyPlayerId] = useState<string>('');
@@ -38,7 +45,7 @@ export default function RankingView({ chapter }: { chapter: number }) {
     let cancelled = false;
     setRankings(null);
     setError(null);
-    fetch(`/api/ranking?chapter=${chapter}`, { cache: 'no-store' })
+    fetch(`/api/ranking?chapter=${chapter}&gameMode=${gameMode}`, { cache: 'no-store' })
       .then(async (r) => {
         if (!r.ok) throw new Error(`status ${r.status}`);
         return r.json();
@@ -54,18 +61,22 @@ export default function RankingView({ chapter }: { chapter: number }) {
     return () => {
       cancelled = true;
     };
-  }, [chapter]);
+  }, [chapter, gameMode]);
+
+  const modeLabel = gameMode === 'author' ? '歌人当て' : '句当て';
+  const backHref = gameMode === 'author' ? '/play/author' : '/play/segments';
 
   return (
     <div className="min-h-screen bg-stone-900 flex flex-col items-center px-4 py-8">
       <div className="w-full max-w-md">
         <div className="text-center mb-6">
           <Link
-            href="/"
+            href={backHref}
             className="inline-block text-stone-500 hover:text-amber-300 text-sm transition-colors mb-3"
           >
             ← ステージ選択へ
           </Link>
+          <div className="text-stone-500 text-xs tracking-widest uppercase mb-1">{modeLabel}</div>
           <h1 className="text-amber-400 text-3xl font-serif tracking-widest">
             第 {chapter} 章
           </h1>

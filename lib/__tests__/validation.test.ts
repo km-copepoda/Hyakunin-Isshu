@@ -2,9 +2,11 @@ import { describe, it, expect } from 'vitest';
 import {
   validateScoreInput,
   validateChapterQuery,
+  validateChapterAndGameModeQuery,
   MIN_VALID_TIME_MS,
   MAX_NAME_LENGTH,
   ORDER_MODES,
+  GAME_MODES,
 } from '@/lib/validation';
 
 const validInput = {
@@ -12,6 +14,7 @@ const validInput = {
   name: 'taro',
   chapter: 1,
   orderMode: 'sequential',
+  gameMode: 'segments',
   timeMs: 30000,
   misses: 2,
 };
@@ -76,6 +79,23 @@ describe('validateScoreInput', () => {
     }
   });
 
+  it('rejects unknown gameMode', () => {
+    expect(validateScoreInput({ ...validInput, gameMode: 'foo' }).ok).toBe(false);
+  });
+
+  it('accepts all valid gameModes', () => {
+    for (const mode of GAME_MODES) {
+      expect(validateScoreInput({ ...validInput, gameMode: mode }).ok).toBe(true);
+    }
+  });
+
+  it('defaults gameMode to segments when omitted (backward compatibility)', () => {
+    const { gameMode: _gm, ...withoutGameMode } = validInput;
+    const result = validateScoreInput(withoutGameMode);
+    expect(result.ok).toBe(true);
+    if (result.ok) expect(result.data.gameMode).toBe('segments');
+  });
+
   it(`rejects timeMs below the floor (${MIN_VALID_TIME_MS}ms)`, () => {
     expect(validateScoreInput({ ...validInput, timeMs: MIN_VALID_TIME_MS - 1 }).ok).toBe(false);
   });
@@ -118,5 +138,37 @@ describe('validateChapterQuery', () => {
   it('accepts boundary values', () => {
     expect(validateChapterQuery({ chapter: '1' }).ok).toBe(true);
     expect(validateChapterQuery({ chapter: '10' }).ok).toBe(true);
+  });
+});
+
+describe('validateChapterAndGameModeQuery', () => {
+  it('parses chapter and defaults gameMode to segments when omitted', () => {
+    const result = validateChapterAndGameModeQuery({ chapter: '3' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.chapter).toBe(3);
+      expect(result.data.gameMode).toBe('segments');
+    }
+  });
+
+  it('parses gameMode when provided', () => {
+    const result = validateChapterAndGameModeQuery({ chapter: '5', gameMode: 'author' });
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.chapter).toBe(5);
+      expect(result.data.gameMode).toBe('author');
+    }
+  });
+
+  it('rejects unknown gameMode', () => {
+    expect(
+      validateChapterAndGameModeQuery({ chapter: '1', gameMode: 'foo' }).ok,
+    ).toBe(false);
+  });
+
+  it('rejects invalid chapter', () => {
+    expect(
+      validateChapterAndGameModeQuery({ chapter: '11', gameMode: 'author' }).ok,
+    ).toBe(false);
   });
 });

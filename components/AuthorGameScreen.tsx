@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { poems } from '@/data/poems';
 import { readings } from '@/data/readings';
 import { authorReadings } from '@/data/authorReadings';
-import { generateOptions } from '@/lib/gameUtils';
+import { generateAuthorOptions } from '@/lib/gameUtils';
 import { RubyText } from '@/components/RubyText';
 import { useGameSounds } from '@/lib/useGameSounds';
 import ScoreSubmit from '@/components/ScoreSubmit';
@@ -34,12 +34,11 @@ function formatTime(ms: number): string {
   return `${secs}.${tenths}秒`;
 }
 
-export default function GameScreen() {
+export default function AuthorGameScreen() {
   const [poemIdx, setPoemIdx] = useState(0);
-  const [step, setStep] = useState(0);
-  const [filled, setFilled] = useState<(string | null)[]>([null, null, null, null, null]);
-  const [wrong, setWrong] = useState<string[]>([]);
   const [options, setOptions] = useState<string[]>([]);
+  const [wrong, setWrong] = useState<string[]>([]);
+  const [revealedAuthor, setRevealedAuthor] = useState<string | null>(null);
   const [phase, setPhase] = useState<Phase>('stage-select');
   const [showNext, setShowNext] = useState(false);
   const [selectedStage, setSelectedStage] = useState(1);
@@ -47,16 +46,13 @@ export default function GameScreen() {
   const [positionInStage, setPositionInStage] = useState(0);
   const [currentOrderMode, setCurrentOrderMode] = useState<OrderMode>('sequential');
 
-  // Timer state (display only — actual timing uses refs)
   const [displayMs, setDisplayMs] = useState(0);
   const [finalStageMs, setFinalStageMs] = useState(0);
   const [showPenalty, setShowPenalty] = useState(false);
 
-  // Mistake tracking
   const [stageMistakes, setStageMistakes] = useState(0);
   const [finalStageMistakes, setFinalStageMistakes] = useState(0);
 
-  // Timer refs
   const poemStartRef = useRef<number>(0);
   const penaltyRef = useRef<number>(0);
   const stageBaseRef = useRef<number>(0);
@@ -69,23 +65,12 @@ export default function GameScreen() {
 
   const { playCorrect, playWrong } = useGameSounds();
 
-  const segmentToReading = useMemo(() => {
-    const map = new Map<string, string>();
-    readings.forEach((poemReadings, i) => {
-      poems[i].segments.forEach((seg, j) => {
-        if (!map.has(seg)) map.set(seg, poemReadings[j]);
-      });
-    });
-    return map;
-  }, []);
-
   useEffect(() => {
     if (phase === 'playing') {
-      setOptions(generateOptions(poems, readings, poemIdx, step));
+      setOptions(generateAuthorOptions(poems, authorReadings, poemIdx));
     }
-  }, [poemIdx, step, phase]);
+  }, [poemIdx, phase]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
@@ -123,9 +108,8 @@ export default function GameScreen() {
     (idx: number, pos: number, isNewStage: boolean) => {
       setPoemIdx(idx);
       setPositionInStage(pos);
-      setStep(0);
-      setFilled([null, null, null, null, null]);
       setWrong([]);
+      setRevealedAuthor(null);
       setPhase('playing');
       setShowNext(false);
       if (isNewStage) setStageMistakes(0);
@@ -157,25 +141,16 @@ export default function GameScreen() {
   const handleChoice = useCallback(
     (choice: string) => {
       if (phase !== 'playing') return;
-      const correct = poem.segments[step];
+      const correct = poem.author;
 
       if (choice === correct) {
         playCorrect();
-        const newFilled = [...filled];
-        newFilled[step] = choice;
-        setFilled(newFilled);
-        setWrong([]);
-
-        if (step === 4) {
-          const total = stopTimer();
-          setFinalStageMs(total);
-          setPhase('poem-complete');
-          setTimeout(() => setShowNext(true), 2200);
-        } else {
-          setStep((s) => s + 1);
-        }
+        setRevealedAuthor(choice);
+        const total = stopTimer();
+        setFinalStageMs(total);
+        setPhase('poem-complete');
+        setTimeout(() => setShowNext(true), 2200);
       } else {
-        // Wrong: add 1-second penalty
         playWrong();
         penaltyRef.current += 1000;
         setStageMistakes((prev) => prev + 1);
@@ -185,7 +160,7 @@ export default function GameScreen() {
         penaltyFlashRef.current = setTimeout(() => setShowPenalty(false), 800);
       }
     },
-    [phase, poem, step, filled, stopTimer],
+    [phase, poem, playCorrect, playWrong, stopTimer],
   );
 
   const handleNextPoem = useCallback(() => {
@@ -216,8 +191,6 @@ export default function GameScreen() {
     setPhase('stage-select');
   }, []);
 
-  const isComplete = phase !== 'playing';
-
   return (
     <div className="min-h-screen bg-stone-900 flex flex-col items-center justify-start px-4 py-8">
 
@@ -230,8 +203,8 @@ export default function GameScreen() {
             </Link>
           </div>
           <div className="text-center mb-8">
-            <h1 className="text-amber-400 text-3xl font-serif tracking-widest mb-1">句当て</h1>
-            <p className="text-stone-400 text-xs mb-4">作者と上の句から残りの句を当てるモード</p>
+            <h1 className="text-amber-400 text-3xl font-serif tracking-widest mb-1">歌人当て</h1>
+            <p className="text-stone-400 text-xs mb-4">和歌から歌人を当てるモード</p>
             <p className="text-stone-400 text-sm">ステージを選んでください</p>
           </div>
           <div className="grid grid-cols-2 gap-3">
@@ -252,7 +225,7 @@ export default function GameScreen() {
                     <div className="text-stone-400 text-xs">第 {first} 〜 {last} 首</div>
                   </button>
                   <Link
-                    href={`/ranking/${sNum}`}
+                    href={`/ranking/author/${sNum}`}
                     className="text-center px-3 py-1.5 text-stone-500 hover:text-amber-300 hover:bg-stone-700/60 text-xs border-t border-stone-700 transition-colors"
                   >
                     📜 名うての歌詠み
@@ -322,6 +295,7 @@ export default function GameScreen() {
           <ScoreSubmit
             chapter={stageNum}
             orderMode={currentOrderMode}
+            gameMode="author"
             timeMs={finalStageMs}
             misses={finalStageMistakes}
           />
@@ -361,11 +335,12 @@ export default function GameScreen() {
           <ScoreSubmit
             chapter={stageNum}
             orderMode={currentOrderMode}
+            gameMode="author"
             timeMs={finalStageMs}
             misses={finalStageMistakes}
           />
           <div className="text-stone-300 text-base text-center leading-relaxed max-w-xs">
-            百首すべての和歌を完成させました。
+            百人すべての歌人を当てました。
             <br />おめでとうございます！
           </div>
           <button
@@ -385,9 +360,7 @@ export default function GameScreen() {
             <div className="text-stone-400 text-xs mb-1 tracking-widest uppercase">
               第{stageNum}章 &nbsp;·&nbsp; {poemInStage} / 10
             </div>
-            <div className="text-amber-300 text-2xl font-serif">{poem.author}</div>
-            <div className="text-amber-200/70 text-xs mt-0.5 tracking-wide">{authorReadings[poemIdx]}</div>
-            <div className="text-stone-500 text-xs mt-1">第 {poem.id} 首</div>
+            <div className="text-stone-500 text-xs mt-1">第 {poem.id} 首 — この歌の作者は？</div>
             {/* Timer */}
             <div className="mt-2 flex items-center justify-center gap-2">
               <span className="text-stone-300 font-mono text-lg">{formatTime(displayMs)}</span>
@@ -397,32 +370,20 @@ export default function GameScreen() {
             </div>
           </div>
 
-          {/* Tanzaku Slots */}
+          {/* Poem Display (whole 5 segments) */}
           <div className="w-full max-w-md flex flex-col gap-2 mb-6">
             {([0, 1, 2, 3, 4] as const).map((slotIdx) => {
-              const text = filled[slotIdx];
-              const isFilled = text !== null;
-              const isActive = phase === 'playing' && slotIdx === step;
-
+              const text = poem.segments[slotIdx];
               return (
                 <div
                   key={slotIdx}
                   className={[
-                    'tanzaku rounded-lg border-2 px-5 py-3 text-center font-serif text-xl transition-all duration-500',
-                    isFilled
-                      ? isComplete
-                        ? 'bg-amber-100 border-amber-300 text-stone-800 animate-glow-pulse'
-                        : 'bg-amber-50 border-amber-300 text-stone-800 animate-fill-in'
-                      : isActive
-                        ? 'bg-stone-800 border-amber-500 border-dashed text-stone-500'
-                        : 'bg-stone-800/60 border-stone-700 text-stone-700',
+                    'tanzaku rounded-lg border-2 px-5 py-3 text-center font-serif text-xl',
+                    'bg-amber-50 border-amber-300 text-stone-800',
+                    phase === 'poem-complete' ? 'animate-glow-pulse' : '',
                   ].join(' ')}
                 >
-                  {isFilled ? (
-                    <RubyText text={text} reading={readings[poemIdx][slotIdx]} />
-                  ) : (
-                    '　　　　　'
-                  )}
+                  <RubyText text={text} reading={readings[poemIdx][slotIdx]} />
                 </div>
               );
             })}
@@ -433,10 +394,17 @@ export default function GameScreen() {
             <div className="w-full max-w-md grid grid-cols-2 gap-3">
               {options.map((opt, i) => {
                 const isWrong = wrong.includes(opt);
-                const reading = segmentToReading.get(opt) ?? opt;
+                // Find a reading for this author (first matching poem)
+                let reading = opt;
+                for (let k = 0; k < poems.length; k++) {
+                  if (poems[k].author === opt) {
+                    reading = authorReadings[k];
+                    break;
+                  }
+                }
                 return (
                   <button
-                    key={`${poemIdx}-${step}-${i}`}
+                    key={`${poemIdx}-${i}`}
                     onClick={() => handleChoice(opt)}
                     disabled={isWrong}
                     className={[
@@ -458,14 +426,9 @@ export default function GameScreen() {
           {phase === 'poem-complete' && (
             <div className="w-full max-w-md animate-float-up">
               <div className="text-center mb-4">
-                <p className="text-amber-200 font-serif text-lg leading-relaxed tracking-wide">
-                  {poem.segments.map((seg, i) => (
-                    <span key={i}>
-                      {i > 0 && '　'}
-                      <RubyText text={seg} reading={readings[poemIdx][i]} />
-                    </span>
-                  ))}
-                </p>
+                <div className="text-stone-400 text-xs mb-1 tracking-wider">作者</div>
+                <div className="text-amber-300 text-2xl font-serif">{revealedAuthor ?? poem.author}</div>
+                <div className="text-amber-200/70 text-xs mt-0.5 tracking-wide">{authorReadings[poemIdx]}</div>
               </div>
               <div className="bg-stone-800 border border-stone-700 rounded-lg p-4 mb-6">
                 <div className="text-stone-400 text-xs mb-2 tracking-wider">現代語訳</div>

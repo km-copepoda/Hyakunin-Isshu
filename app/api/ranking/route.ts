@@ -1,7 +1,11 @@
 import { NextResponse } from 'next/server';
 import { and, eq, gt } from 'drizzle-orm';
 import { db, schema } from '@/lib/db';
-import { validateChapterQuery, ORDER_MODES, type OrderMode } from '@/lib/validation';
+import {
+  validateChapterAndGameModeQuery,
+  ORDER_MODES,
+  type OrderMode,
+} from '@/lib/validation';
 import { buildRanking, SEVEN_DAYS_MS, type ScoreRecord } from '@/lib/ranking';
 
 export const runtime = 'nodejs';
@@ -9,14 +13,15 @@ export const dynamic = 'force-dynamic';
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const result = validateChapterQuery({
+  const result = validateChapterAndGameModeQuery({
     chapter: url.searchParams.get('chapter') ?? undefined,
+    gameMode: url.searchParams.get('gameMode') ?? undefined,
   });
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 400 });
   }
 
-  const { chapter } = result.data;
+  const { chapter, gameMode } = result.data;
   const now = new Date();
   const cutoff = new Date(now.getTime() - SEVEN_DAYS_MS);
 
@@ -33,6 +38,7 @@ export async function GET(request: Request) {
     .where(
       and(
         eq(schema.scores.chapter, chapter),
+        eq(schema.scores.gameMode, gameMode),
         gt(schema.scores.playedAt, cutoff),
       ),
     );
@@ -67,7 +73,7 @@ export async function GET(request: Request) {
   ) as Record<OrderMode, unknown[]>;
 
   return NextResponse.json(
-    { chapter, rankings },
+    { chapter, gameMode, rankings },
     { headers: { 'Cache-Control': 'no-store, max-age=0' } },
   );
 }
