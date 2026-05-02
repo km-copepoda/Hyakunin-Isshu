@@ -9,8 +9,13 @@ import { generateOptions } from '@/lib/gameUtils';
 import { RubyText } from '@/components/RubyText';
 import { useGameSounds } from '@/lib/useGameSounds';
 import ScoreSubmit from '@/components/ScoreSubmit';
+import {
+  COUNTDOWN_SECONDS,
+  countdownRemaining,
+  getCountdownLabel,
+} from '@/lib/countdown';
 
-type Phase = 'stage-select' | 'order-select' | 'playing' | 'poem-complete' | 'stage-clear' | 'game-clear';
+type Phase = 'stage-select' | 'order-select' | 'countdown' | 'playing' | 'poem-complete' | 'stage-clear' | 'game-clear';
 type OrderMode = 'sequential' | 'reverse' | 'random';
 
 function shuffle<T>(arr: T[]): T[] {
@@ -63,6 +68,11 @@ export default function GameScreen() {
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const penaltyFlashRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Countdown state
+  const [countdownLeft, setCountdownLeft] = useState<number>(COUNTDOWN_SECONDS);
+  const countdownIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const countdownTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const poem = poems[poemIdx] ?? poems[99];
   const stageNum = selectedStage;
   const poemInStage = positionInStage + 1;
@@ -90,7 +100,26 @@ export default function GameScreen() {
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
       if (penaltyFlashRef.current) clearTimeout(penaltyFlashRef.current);
+      if (countdownIntervalRef.current) clearInterval(countdownIntervalRef.current);
+      if (countdownTimeoutRef.current) clearTimeout(countdownTimeoutRef.current);
     };
+  }, []);
+
+  const clearCountdownTimers = useCallback(() => {
+    if (countdownIntervalRef.current) {
+      clearInterval(countdownIntervalRef.current);
+      countdownIntervalRef.current = null;
+    }
+    if (countdownTimeoutRef.current) {
+      clearTimeout(countdownTimeoutRef.current);
+      countdownTimeoutRef.current = null;
+    }
+  }, []);
+
+  const scrollToTop = useCallback(() => {
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
   }, []);
 
   const stopTimer = useCallback((): number => {
@@ -119,6 +148,15 @@ export default function GameScreen() {
     }, 100);
   }, []);
 
+  const beginPoem = useCallback(
+    (isNewStage: boolean) => {
+      setPhase('playing');
+      startTimerForPoem(isNewStage);
+      scrollToTop();
+    },
+    [startTimerForPoem, scrollToTop],
+  );
+
   const startPoem = useCallback(
     (idx: number, pos: number, isNewStage: boolean) => {
       setPoemIdx(idx);
@@ -126,12 +164,23 @@ export default function GameScreen() {
       setStep(0);
       setFilled([null, null, null, null, null]);
       setWrong([]);
-      setPhase('playing');
       setShowNext(false);
       if (isNewStage) setStageMistakes(0);
-      startTimerForPoem(isNewStage);
+
+      clearCountdownTimers();
+      const startedAt = Date.now();
+      setCountdownLeft(COUNTDOWN_SECONDS);
+      setPhase('countdown');
+      scrollToTop();
+      countdownIntervalRef.current = setInterval(() => {
+        setCountdownLeft(countdownRemaining(startedAt, Date.now()));
+      }, 100);
+      countdownTimeoutRef.current = setTimeout(() => {
+        clearCountdownTimers();
+        beginPoem(isNewStage);
+      }, COUNTDOWN_SECONDS * 1000);
     },
-    [startTimerForPoem],
+    [beginPoem, clearCountdownTimers, scrollToTop],
   );
 
   const handleSelectStage = useCallback((stage: number) => {
@@ -213,8 +262,9 @@ export default function GameScreen() {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
+    clearCountdownTimers();
     setPhase('stage-select');
-  }, []);
+  }, [clearCountdownTimers]);
 
   const isComplete = phase !== 'playing';
 
@@ -377,8 +427,32 @@ export default function GameScreen() {
         </div>
       )}
 
+      {/* ===== COUNTDOWN ===== */}
+      {phase === 'countdown' && (
+        <div className="w-full max-w-md flex flex-col items-center mt-4">
+          <div className="text-stone-400 text-xs mb-2 tracking-widest uppercase">
+            第{stageNum}章 &nbsp;·&nbsp; {poemInStage} / 10
+          </div>
+          <div className="text-amber-300 text-2xl font-serif">{poem.author}</div>
+          <div className="text-amber-200/70 text-xs mt-0.5 tracking-wide">{authorReadings[poemIdx]}</div>
+          <div className="text-stone-500 text-xs mt-1">第 {poem.id} 首</div>
+          <div className="mt-10 flex items-center justify-center">
+            <div
+              key={countdownLeft}
+              className={[
+                'font-serif tracking-widest animate-float-up',
+                countdownLeft > 0 ? 'text-amber-300 text-9xl' : 'text-emerald-300 text-6xl',
+              ].join(' ')}
+            >
+              {getCountdownLabel(countdownLeft)}
+            </div>
+          </div>
+          <div className="mt-8 text-stone-500 text-xs">心の準備を…</div>
+        </div>
+      )}
+
       {/* ===== PLAYING / POEM-COMPLETE ===== */}
-      {phase !== 'stage-select' && phase !== 'order-select' && phase !== 'stage-clear' && phase !== 'game-clear' && (
+      {(phase === 'playing' || phase === 'poem-complete') && (
         <>
           {/* Header */}
           <div className="w-full max-w-md mb-4 text-center">
