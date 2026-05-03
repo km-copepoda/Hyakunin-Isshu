@@ -150,18 +150,22 @@ export default function AuthorGameScreen() {
       setShowNext(false);
       if (isNewStage) setStageMistakes(0);
 
-      clearCountdownTimers();
-      const startedAt = Date.now();
-      setCountdownLeft(COUNTDOWN_SECONDS);
-      setPhase('countdown');
-      scrollToTop();
-      countdownIntervalRef.current = setInterval(() => {
-        setCountdownLeft(countdownRemaining(startedAt, Date.now()));
-      }, 100);
-      countdownTimeoutRef.current = setTimeout(() => {
+      if (isNewStage) {
         clearCountdownTimers();
+        const startedAt = Date.now();
+        setCountdownLeft(COUNTDOWN_SECONDS);
+        setPhase('countdown');
+        scrollToTop();
+        countdownIntervalRef.current = setInterval(() => {
+          setCountdownLeft(countdownRemaining(startedAt, Date.now()));
+        }, 100);
+        countdownTimeoutRef.current = setTimeout(() => {
+          clearCountdownTimers();
+          beginPoem(isNewStage);
+        }, COUNTDOWN_SECONDS * 1000);
+      } else {
         beginPoem(isNewStage);
-      }, COUNTDOWN_SECONDS * 1000);
+      }
     },
     [beginPoem, clearCountdownTimers, scrollToTop],
   );
